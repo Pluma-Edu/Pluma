@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ItemRow } from '../generation/pool.ts';
+import { instructionsFor } from './instructions.ts';
 
 const CSS = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'print.css'), 'utf8');
 
@@ -9,8 +10,18 @@ export type WorksheetMeta = {
   title: string;
   courseName: string;
   skillName: string;
+  /** e.g. "Unidad 3" — printed in the masthead eyebrow. */
+  unitLabel?: string | null;
+  /** e.g. SP2-U03-02 — printed in the footer so a teacher can re-find the sheet. */
+  skillCode?: string | null;
   instructions?: string;
 };
+
+/** The quill, inlined so the PDF has no external reference to resolve. */
+const MARK = '<svg viewBox="0 0 100 200" fill="#000"><path fill-rule="evenodd" '
+  + 'd="M86 12 C98 48 86 96 66 130 C60 140 52 152 45 161 C50 163 54 164 58 165 '
+  + 'C50 172 42 178 36 183 L28 199 L22 196 L31 175 C18 146 20 106 31 78 C42 50 62 24 86 12 Z '
+  + 'M82 22 C58 54 42 96 34 176 L30 175 C38 94 58 50 79 19 Z"/></svg>';
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -18,20 +29,6 @@ const esc = (s: string) =>
 /** The run of underscores the generator writes becomes a ruled blank in print. */
 function renderStem(stem: string): string {
   return esc(stem).replace(/_{3,}/g, '<span class="blank"></span>');
-}
-
-function defaultInstructions(items: ItemRow[]): string {
-  const label = items.find((i) => i.render_meta?.tense_label)?.render_meta?.tense_label as string | undefined;
-  const type = items[0]?.item_type;
-  if (type === 'mcq') {
-    return label
-      ? `Circle the correct ${label} form of the verb in parentheses.`
-      : 'Circle the correct answer.';
-  }
-  if (type === 'short_answer') return 'Write your answer on the line.';
-  return label
-    ? `Complete each sentence with the correct ${label} form of the verb in parentheses.`
-    : 'Complete each sentence.';
 }
 
 function answerText(item: ItemRow): string {
@@ -66,7 +63,9 @@ export function renderWorksheetHtml(
   opts: { answerKey?: boolean } = {},
 ): string {
   const key = opts.answerKey === true;
-  const instructions = meta.instructions ?? defaultInstructions(items);
+  const instructions = meta.instructions ?? instructionsFor(items);
+
+  const eyebrow = [meta.courseName, meta.unitLabel].filter(Boolean).join(' · ');
 
   return `<!doctype html>
 <html lang="en">
@@ -79,16 +78,17 @@ export function renderWorksheetHtml(
 <div class="sheet${key ? ' keysheet' : ''}">
   <div class="masthead">
     <div>
+      <p class="eyebrow">${esc(eyebrow)}</p>
       <h1>${esc(meta.title)}</h1>
-      <p class="course">${esc(meta.courseName)}${meta.skillName && meta.skillName !== meta.title ? " &middot; " + esc(meta.skillName) : ""}</p>
     </div>
-    <div class="brand">Pluma</div>
+    <div class="lockup">${MARK}<span class="wordmark">Pluma</span></div>
   </div>
   ${key
     ? '<div class="keybanner">Answer key</div>'
-    : `<div class="nameline">
-    <span>Name<span class="rule"></span></span>
-    <span>Date<span class="rule short"></span></span>
+    : `<div class="fields">
+    <div><div class="label">Name</div><div class="rule"></div></div>
+    <div><div class="label">Date</div><div class="rule"></div></div>
+    <div><div class="label">Class / Period</div><div class="rule"></div></div>
   </div>`}
   <p class="instructions">${esc(instructions)}</p>
   <ol class="items">

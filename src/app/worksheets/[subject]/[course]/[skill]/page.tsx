@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SiteNav, SiteFooter } from '@/components/site-chrome';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { listWorksheets, allWorksheetPaths } from '@/lib/library/queries';
@@ -38,7 +39,9 @@ export default async function SkillPage({ params }: Props) {
   const head = sheets[0];
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <div className="flex min-h-screen flex-col">
+      <SiteNav />
+      <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <nav className="text-sm text-neutral-500">
         <Link href="/worksheets" className="underline underline-offset-4">Worksheets</Link>
         <span className="mx-2">/</span>
@@ -66,6 +69,8 @@ export default async function SkillPage({ params }: Props) {
           </li>
         ))}
       </ul>
-    </main>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

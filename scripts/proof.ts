@@ -14,6 +14,7 @@ import { query, one, close } from '../src/lib/db/client.ts';
 import { topUpPool, drawFromPool, ensurePool, type ItemRow } from '../src/lib/generation/pool.ts';
 import { generationHash, type GenerationParams, type Difficulty, type ItemType } from '../src/lib/generation/params.ts';
 import { conjugate, type Person, type Tense } from '../src/lib/generation/template/conjugator.ts';
+import { publicSkillName } from "../src/lib/taxonomy/seed-spanish.ts";
 import { renderWorksheetHtml } from '../src/lib/render/worksheet.ts';
 import { htmlToPdf, closeBrowser } from '../src/lib/render/pdf.ts';
 
@@ -86,15 +87,21 @@ async function main() {
     console.error(`  only ${items.length} servable items for ${count} requested`);
   }
 
-  const meta = await one<{ course_name: string; skill_name: string }>(
-    `SELECT co.name AS course_name, sk.name AS skill_name
-       FROM course co, skill sk WHERE co.slug = $1 AND sk.slug = $2`, [course, skill]);
+  const meta = await one<{ course_name: string; skill_name: string; unit_label: string | null; skill_code: string }>(
+    `SELECT co.name AS course_name, sk.name AS skill_name, cs.unit_label,
+            $3::text AS skill_code
+       FROM course co
+       JOIN skill sk ON sk.slug = $2
+       LEFT JOIN course_skill cs ON cs.course_id = co.id AND cs.skill_id = sk.id
+      WHERE co.slug = $1`, [course, skill, 'SP2-U01-01']);
 
   const worksheetHtml = renderWorksheetHtml(items, {
-    title: meta.skill_name, courseName: meta.course_name, skillName: meta.skill_name,
+    title: publicSkillName(skill, meta.skill_name), courseName: meta.course_name, skillName: meta.skill_name,
+    unitLabel: meta.unit_label, skillCode: meta.skill_code,
   });
   const keyHtml = renderWorksheetHtml(items, {
-    title: meta.skill_name, courseName: meta.course_name, skillName: meta.skill_name,
+    title: publicSkillName(skill, meta.skill_name), courseName: meta.course_name, skillName: meta.skill_name,
+    unitLabel: meta.unit_label, skillCode: meta.skill_code,
   }, { answerKey: true });
 
   const outDir = join(process.cwd(), 'out');

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SiteNav, SiteFooter } from '@/components/site-chrome';
 import type { Metadata } from 'next';
 import { listCourses } from '@/lib/library/queries';
 
@@ -16,7 +17,9 @@ export default async function LibraryIndex() {
   const total = courses.reduce((n, c) => n + Number(c.worksheet_count), 0);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <div className="flex min-h-screen flex-col">
+      <SiteNav />
+      <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Free printable worksheets</h1>
       <p className="mt-2 max-w-xl text-neutral-600">
         {total} worksheets, every one a PDF you can download and photocopy without an account.
@@ -37,6 +40,8 @@ export default async function LibraryIndex() {
           </li>
         ))}
       </ul>
-    </main>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

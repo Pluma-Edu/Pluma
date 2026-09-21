@@ -1,1 +1,109 @@
 @import "tailwindcss";
+
+/*
+ * Pluma design tokens.
+ *
+ * Taken from the Pluma Foundations design file. Two things about this palette
+ * are load-bearing rather than decorative:
+ *
+ *   Every colour is declared alongside the grayscale it becomes on a school
+ *   copier. Lightness falls monotonically as mastery rises, so the performance
+ *   ramp is already a grayscale ramp — it survives a photocopy and it survives
+ *   every dichromacy, because it never depends on hue.
+ *
+ *   The performance scale carries meaning in three channels at once: lightness,
+ *   glyph and number. Any one of them alone is enough to read the grid.
+ */
+@theme {
+  /* base — paper and ink */
+  --color-paper:       oklch(0.995 0.012 95);
+  --color-paper-sunk:  oklch(0.955 0.048 92);
+  --color-rule:        oklch(0.895 0.032 86);
+  --color-ink:         oklch(0.23 0.032 56);
+  --color-ink-soft:    oklch(0.40 0.038 56);
+  --color-ink-muted:   oklch(0.50 0.036 58);
+
+  /* accent — four hues, one job each */
+  --color-primary:       oklch(0.51 0.175 252);   /* actions, links, correct */
+  --color-primary-hover: oklch(0.42 0.16 252);
+  --color-primary-tint:  oklch(0.925 0.075 250);  /* selected rows, fills */
+  --color-primary-deep:  oklch(0.37 0.145 252);
+  --color-teal:          oklch(0.755 0.13 176);   /* mastery fills, subject tags */
+  --color-teal-deep:     oklch(0.52 0.12 182);
+  --color-teal-ink:      oklch(0.24 0.055 182);
+  --color-marigold:      oklch(0.82 0.17 80);     /* attention flag */
+  --color-marigold-fill: oklch(0.875 0.145 92);
+  --color-marigold-ink:  oklch(0.31 0.075 76);
+  --color-tangerine:     oklch(0.555 0.175 44);   /* retry marks */
+  --color-tangerine-bright: oklch(0.70 0.18 46);
+  --color-tangerine-fill:   oklch(0.955 0.062 70);
+  --color-tangerine-ink:    oklch(0.38 0.115 48);
+  --color-note-fill:     oklch(0.955 0.062 88);
+
+  /* performance scale — see BANDS in lib/design/performance.ts */
+  --color-perf-4-bg: oklch(0.52 0.12 182);
+  --color-perf-4-fg: oklch(0.995 0.012 95);
+  --color-perf-3-bg: oklch(0.755 0.13 176);
+  --color-perf-3-fg: oklch(0.24 0.055 182);
+  --color-perf-2-bg: oklch(0.875 0.145 92);
+  --color-perf-2-fg: oklch(0.31 0.075 76);
+  --color-perf-1-bg: oklch(0.955 0.062 70);
+  --color-perf-1-fg: oklch(0.38 0.115 48);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+}
+
+/*
+ * Atkinson Hyperlegible for everything a human reads — it was designed by the
+ * Braille Institute to keep confusable letterforms apart, which is the right
+ * default for a product that is read by students who are still decoding.
+ * IBM Plex Mono for codes and metadata.
+ */
+:root {
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/*
+ * These MUST live in @layer base. Unlayered CSS outranks everything inside
+ * @layer utilities, so an unlayered `a { color: ... }` silently beats
+ * `text-paper` on every anchor — which renders a white-on-azure button as
+ * azure-on-azure and makes the primary call to action invisible.
+ */
+@layer base {
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--color-primary); text-underline-offset: 3px; }
+  a:hover { color: var(--color-primary-hover); }
+}
+
+/* Not-attempted: a stripe, so "no data" is never mistaken for a low score. */
+@layer components {
+
+.perf-none {
+  background: repeating-linear-gradient(135deg,
+    var(--color-paper) 0 5px, oklch(0.905 0.04 88) 5px 10px);
+  color: var(--color-ink-muted);
+}
+
+/*
+ * Stale: there IS evidence, it is just old. Distinct from both a score and
+ * from no data — the design system has no band for this, because a static
+ * mock has no concept of evidence decaying. A dotted border reads as
+ * "provisional" without borrowing a score colour.
+ */
+.perf-stale {
+  background: var(--color-paper-sunk);
+  color: var(--color-ink-muted);
+  border: 1px dotted var(--color-ink-muted);
+  font-style: italic;
+}
+
+}
