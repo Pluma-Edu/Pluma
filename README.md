@@ -15,11 +15,15 @@ Design docs — read these before the code:
 | [`docs/design/01-data-model.sql`](docs/design/01-data-model.sql) | the schema, mirrored into `migrations/0001_init.sql` |
 | [`docs/design/02-generation-pipeline.md`](docs/design/02-generation-pipeline.md) | inputs, output schema, validation layers, failure handling |
 
-## Status: Phase 0
+## Status: Phase 1
 
-Item schema, generator, validator and print renderer, with one page that proves
-a worksheet and answer key come out correct. No accounts, no classes, no student
-data — none of those tables have a writer yet.
+Surface 2, the classroom, end to end for Spanish 1-3. A teacher signs up, makes
+a class, adds students with notes, assigns differentiated work; students join
+with a class code and no account; work is auto-graded and the per-skill mastery
+grid fills in. Phase 0's bank, validator and print renderer sit underneath it.
+
+Not built yet: the public library (surface 1), practice (surface 3), and
+everything in the brief's out-of-scope list.
 
 ## Setup
 
@@ -33,6 +37,20 @@ npm run dev                   # then open /proof
 ```
 
 `CHROMIUM_PATH` must point at a Chromium binary for PDF rendering.
+
+## Proving it works
+
+```sh
+npm run proof           # Phase 0: worksheet + answer key, keys re-derived
+npm run e2e:classroom   # Phase 1: the whole classroom loop, with assertions
+```
+
+`e2e:classroom` signs a teacher up, builds a class, adds five students with real
+notes, confirms chips, assigns work, answers it as each student, and reads the
+grid — asserting along the way that differentiation produced a different draw,
+that a note never became a parameter it shouldn't, that a student's payload
+carries no answers, and that the database itself refuses an account for an
+under-13 roster entry.
 
 ## Producing a worksheet from the command line
 
@@ -56,6 +74,10 @@ src/lib/generation/
   template/            conjugator + deterministic item generation
   model/               the ONLY module that talks to a model
 src/lib/validation/    L0 structural + L1 linguistic
+src/lib/roster/        the context-note extractor (closed output vocabulary)
+src/lib/grading/       accent-aware auto-grading with near-miss diagnosis
+src/lib/classroom/     classes, roster, assignments, student flow, mastery
+src/lib/auth/          teacher sessions; students never get one
 src/lib/render/        print CSS, worksheet HTML, Chromium PDF
 scripts/               migrate, seed, proof, screenshot
 ```
@@ -66,6 +88,13 @@ scripts/               migrate, seed, proof, screenshot
 raises `UnsupportedForm` and no item is generated. A wrong answer key in front
 of 30 students is the failure this project is built to avoid, so a gap in
 coverage is always preferable to a confident wrong form.
+
+**The context note never leaves the database.** It is not scrubbed and
+forwarded — it is read against a closed vocabulary and turned into chips the
+teacher confirms. A scrubber is a recall problem; a closed output vocabulary is
+not, because a student's name cannot be a member of it. Clinical, immigration
+and family terms are never turned into chips at all, and the teacher is told
+they were ignored.
 
 **Constraint 2 is a type signature, not a rule.** `src/lib/generation/model/client.ts`
 accepts `GenerationParams` and a lemma allow-list. `GenerationParams` contains
