@@ -177,11 +177,20 @@ export function generateTemplateItems(
   if (!spec) return [];
 
   const forbidden = new Set(params.constraints.forbidden_lemmas ?? []);
-  const eligible = verbsFor(params.difficulty, lexicon)
+
+  // The skill decides which verbs belong at all; difficulty then narrows within
+  // that set. Applying difficulty first empties skills that are ABOUT a verb
+  // class — "preterite: irregular verbs" at difficulty 2 asked for verbs that
+  // are both regular and irregular, and got none. Difficulty must never empty
+  // a skill; where it would, the skill's own set stands.
+  const inSkill = lexicon
     .filter((l) => l.pos === 'verb')
     .filter((l) => spec.accepts(l))
     .filter((l) => l.introduced_at_course <= params.constraints.lexicon_ceiling)
-    .filter((l) => !forbidden.has(l.lemma))
+    .filter((l) => !forbidden.has(l.lemma));
+
+  const narrowed = verbsFor(params.difficulty, inSkill);
+  const eligible = (narrowed.length >= 4 ? narrowed : inSkill)
     .sort((a, b) => a.lemma.localeCompare(b.lemma, 'es'));
 
   const persons = (params.constraints.allowed_persons ?? personsFor(params.difficulty))
