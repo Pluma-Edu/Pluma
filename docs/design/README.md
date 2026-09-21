@@ -1,4 +1,4 @@
-# Pluma design docs
+# StudyBien design docs
 
 Read in order. Nothing here is application code; nothing is scaffolded yet.
 
