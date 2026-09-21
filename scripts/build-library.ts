@@ -21,6 +21,7 @@ import { htmlToPdf, closeBrowser } from '../src/lib/render/pdf.ts';
 import { put, exists } from '../src/lib/storage/index.ts';
 import { VARIANTS, worksheetTitle, metaDescription, type Variant } from '../src/lib/library/variants.ts';
 import { publicSkillName } from '../src/lib/taxonomy/seed-spanish.ts';
+import { skillCode, pdfPageCount } from '../src/lib/library/codes.ts';
 
 const CEILING: Record<string, 1 | 2 | 3> = { 'spanish-1': 1, 'spanish-2': 2, 'spanish-3': 3 };
 const force = process.argv.includes('--force');
@@ -30,6 +31,7 @@ type Target = {
   course_id: string; course_slug: string; course_name: string;
   grade_low: number | null; grade_high: number | null;
   skill_id: string; skill_slug: string; skill_name: string;
+  unit_label: string | null; skill_sequence: number;
 };
 
 /**
@@ -39,7 +41,7 @@ type Target = {
  */
 function renderHash(items: ItemRow[], variant: Variant, title: string): string {
   return createHash('sha256').update(JSON.stringify({
-    items: items.map((i) => i.id), variant: variant.slugSuffix, title, renderer: 1,
+    items: items.map((i) => i.id), variant: variant.slugSuffix, title, renderer: 2,
   })).digest('hex').slice(0, 32);
 }
 
@@ -76,11 +78,15 @@ async function buildOne(t: Target, variant: Variant): Promise<'built' | 'skipped
     && await exists('public', pdfKey) && await exists('private', keyKey);
   if (unchanged && !force) return 'skipped';
 
+  const code = skillCode(t.course_slug, t.unit_label, t.skill_sequence);
   const meta = {
     title: publicName, courseName: t.course_name, skillName: t.skill_name,
+    unitLabel: t.unit_label, skillCode: code,
   };
-  await put('public', pdfKey, await htmlToPdf(renderWorksheetHtml(items, meta)));
+  const sheetPdf = await htmlToPdf(renderWorksheetHtml(items, meta));
+  await put('public', pdfKey, sheetPdf);
   await put('private', keyKey, await htmlToPdf(renderWorksheetHtml(items, meta, { answerKey: true })));
+  const pageCount = pdfPageCount(sheetPdf);
 
   await tx(async (c) => {
     const { rows: [set] } = await c.query(
@@ -98,19 +104,20 @@ async function buildOne(t: Target, variant: Variant): Promise<'built' | 'skipped
     if (existing[0]) {
       await c.query(
         `UPDATE worksheet SET item_set_id = $2, title = $3, meta_description = $4,
-                render_hash = $5, pdf_key = $6, answer_key_pdf_key = $7, published_at = now()
+                render_hash = $5, pdf_key = $6, answer_key_pdf_key = $7,
+                page_count = $8, skill_code = $9, published_at = now()
           WHERE id = $1`,
         [existing[0].id, set.id, title, metaDescription(publicName, t.course_name, variant),
-          hash, pdfKey, keyKey]);
+          hash, pdfKey, keyKey, pageCount, code]);
     } else {
       await c.query(
         `INSERT INTO worksheet (item_set_id, subject_id, course_id, primary_skill_id, slug,
             title, meta_description, grade_band_low, grade_band_high, render_hash,
-            pdf_key, answer_key_pdf_key, published_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())`,
+            pdf_key, answer_key_pdf_key, page_count, skill_code, published_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, now())`,
         [set.id, t.subject_id, t.course_id, t.skill_id, variant.slugSuffix, title,
           metaDescription(publicName, t.course_name, variant),
-          t.grade_low, t.grade_high, hash, pdfKey, keyKey]);
+          t.grade_low, t.grade_high, hash, pdfKey, keyKey, pageCount, code]);
     }
   });
 
@@ -122,7 +129,8 @@ async function main() {
     `SELECT su.id AS subject_id, su.slug AS subject_slug,
             co.id AS course_id, co.slug AS course_slug, co.name AS course_name,
             co.typical_grade_low AS grade_low, co.typical_grade_high AS grade_high,
-            sk.id AS skill_id, sk.slug AS skill_slug, sk.name AS skill_name
+            sk.id AS skill_id, sk.slug AS skill_slug, sk.name AS skill_name,
+            cs.unit_label, cs.sequence_index AS skill_sequence
        FROM course_skill cs
        JOIN course co ON co.id = cs.course_id
        JOIN skill sk ON sk.id = cs.skill_id

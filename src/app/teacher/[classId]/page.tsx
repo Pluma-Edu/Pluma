@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { requireTeacher, requireOwnedClass } from '@/lib/auth/require';
 import { listRoster, listLearnerParams } from '@/lib/classroom/teacher';
 import { listAssignments } from '@/lib/classroom/assignment';
-import { classMasteryGrid, BAND_LABEL, BAND_CLASS, type Band } from '@/lib/classroom/mastery';
+import { classMasteryGrid, type Band } from '@/lib/classroom/mastery';
+import { BAND_STYLE, BAND_ORDER } from '@/lib/design/performance';
 import { AddStudentForm } from './add-student-form';
 import { confirmChipAction } from '../actions';
 
@@ -86,12 +87,26 @@ export default async function ClassPage({ params }: { params: Promise<{ classId:
                         const band = (cell?.band ?? 'insufficient') as Band;
                         return (
                           <td key={skill.id} className="w-28 p-1">
+                            {/* Three channels at once: the fill carries a
+                                lightness ramp, the glyph carries the band, the
+                                number carries the estimate. Any one of them
+                                alone is enough — which is what makes this grid
+                                readable on a projector, to a dichromat, and
+                                after a photocopy. */}
                             <span
-                              title={`${BAND_LABEL[band]}${cell ? ` · ${cell.attempts} attempts` : ''}`}
-                              className={`block rounded px-2 py-1 text-center text-xs ${BAND_CLASS[band]}`}>
-                              {band === 'insufficient' ? '—'
-                                : band === 'stale' ? '?'
-                                : `${Math.round(Number(cell!.mastery_estimate) * 100)}`}
+                              title={`${BAND_STYLE[band].label} — ${BAND_STYLE[band].hint}`
+                                + `${cell ? ` (${cell.attempts} attempts)` : ''}`}
+                              className={`flex items-baseline justify-between gap-1 rounded-md px-2 py-1.5
+                                          text-xs ${BAND_STYLE[band].className}`}>
+                              <span aria-hidden="true" className="text-sm leading-none">
+                                {BAND_STYLE[band].glyph}
+                              </span>
+                              <span className="font-bold tabular-nums">
+                                {cell && band !== 'insufficient' && band !== 'stale'
+                                  ? Math.round(Number(cell.mastery_estimate) * 100)
+                                  : '—'}
+                              </span>
+                              <span className="sr-only">{BAND_STYLE[band].label}</span>
                             </span>
                           </td>
                         );
@@ -102,15 +117,20 @@ export default async function ClassPage({ params }: { params: Promise<{ classId:
               </table>
             </div>
             <p className="mt-3 flex flex-wrap gap-3 text-xs text-neutral-500">
-              {(['secure', 'developing', 'shaky', 'needs_help', 'stale', 'insufficient'] as Band[]).map((b) => (
-                <span key={b} className="flex items-center gap-1">
-                  <span className={`inline-block h-3 w-4 rounded ${BAND_CLASS[b]}`} />{BAND_LABEL[b]}
+              {BAND_ORDER.map((b) => (
+                <span key={b} className="flex items-center gap-1.5">
+                  <span className={`inline-grid h-4 w-5 place-items-center rounded text-[10px]
+                                    ${BAND_STYLE[b].className}`}>{BAND_STYLE[b].glyph}</span>
+                  {BAND_STYLE[b].label}
                 </span>
               ))}
             </p>
-            <p className="mt-2 text-xs text-neutral-500">
-              A dash means not enough evidence to say anything. A question mark means the
-              evidence is old enough that it is worth re-checking. Neither is a score.
+            <p className="mt-2 max-w-3xl text-xs text-ink-muted">
+              Each cell says the same thing three ways — shade, symbol and number — so the grid
+              reads on a projector, in black and white, and to anyone who does not see the
+              colours. A dash is not a zero: it means there is not enough evidence to say
+              anything yet, and <span className="italic">?</span> means what evidence there is
+              has gone stale.
             </p>
           </>
         )}

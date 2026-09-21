@@ -31,60 +31,81 @@ html, body {
 
 /* ---------------------------------------------------------------- header */
 
+/*
+ * Masthead follows the Pluma Worksheet design: a mono eyebrow over the title on
+ * the left, the mark and wordmark on the right, a heavy rule beneath.
+ *
+ * The mark is drawn in ink here, not in brand azure. A copier turns azure into
+ * a mid grey that loses the feather's interior cut, and a logo that only works
+ * in colour is not a logo for a product whose output gets photocopied.
+ */
+
 .masthead {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  border-bottom: 1pt solid #000;
-  padding-bottom: 6pt;
-  margin-bottom: 10pt;
-}
-
-.masthead h1 {
-  font-size: 15pt;
-  font-weight: 700;
-  margin: 0 0 2pt 0;
-  letter-spacing: 0.01em;
-}
-
-.masthead .course {
-  font-size: 10pt;
-  margin: 0;
-}
-
-.masthead .brand {
-  font-size: 9pt;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  padding-left: 18pt;
-}
-
-.nameline {
-  display: flex;
-  gap: 22pt;
-  font-size: 10.5pt;
+  border-bottom: 1.5pt solid #000;
+  padding-bottom: 7pt;
   margin-bottom: 12pt;
 }
 
-.nameline span { white-space: nowrap; }
-
-.nameline .rule {
-  display: inline-block;
-  border-bottom: 0.75pt solid #000;
-  min-width: 150pt;
-  margin-left: 4pt;
+.masthead .eyebrow {
+  font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 8pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 3pt 0;
 }
 
-.nameline .rule.short { min-width: 80pt; }
+.masthead h1 {
+  font-size: 17pt;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.masthead .lockup {
+  display: flex;
+  align-items: center;
+  gap: 5pt;
+  white-space: nowrap;
+}
+
+.masthead .lockup svg { width: 7pt; height: 13.5pt; display: block; }
+.masthead .lockup .wordmark { font-size: 12pt; font-weight: 700; letter-spacing: -0.01em; }
+
+/* Three labelled fields rather than an inline run: a student fills these in
+   while the sheet is flat on a desk, and labels above rules survive a copier
+   better than labels beside them. */
+.fields {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 16pt;
+  margin-bottom: 13pt;
+}
+
+.fields .label {
+  font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 7.5pt;
+  letter-spacing: 0.1em;
+  margin-bottom: 15pt;
+}
+
+.fields .rule { border-bottom: 0.75pt solid #000; }
 
 .instructions {
+  /* 12% grey: the lightest fill that still reads after a second-generation
+     photocopy, per the foundations' grayscale column. */
+  background: #ededed;
+  border-left: 4pt solid #000;
+  padding: 7pt 10pt;
   font-size: 11pt;
-  font-style: italic;
-  border-left: 2pt solid #000;
-  padding: 2pt 0 2pt 8pt;
-  margin-bottom: 14pt;
+  line-height: 1.45;
+  margin-bottom: 15pt;
 }
+
+.instructions em { font-style: italic; }
 
 /* ----------------------------------------------------------------- items */
 
@@ -167,7 +188,7 @@ ul.choices .key {
 }
 
 .keybanner {
-  border: 1pt solid #000;
+  border: 1.5pt solid #000;
   padding: 3pt 7pt;
   font-size: 10pt;
   font-weight: 700;

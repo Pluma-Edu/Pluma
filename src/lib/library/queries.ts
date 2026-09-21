@@ -45,6 +45,8 @@ export type LibraryWorksheet = {
   pdf_key: string | null; grade_band_low: number | null; grade_band_high: number | null;
   skill_slug: string; skill_name: string; course_slug: string; course_name: string;
   subject_slug: string; subject_name: string; item_set_id: string; item_count: string;
+  unit_label: string | null; skill_code: string | null; page_count: number | null;
+  item_type: string | null; same_skill?: boolean;
 };
 
 const WORKSHEET_COLUMNS = `
@@ -53,6 +55,11 @@ const WORKSHEET_COLUMNS = `
   sk.slug AS skill_slug, sk.name AS skill_name,
   co.slug AS course_slug, co.name AS course_name,
   su.slug AS subject_slug, su.name AS subject_name,
+  w.page_count, w.skill_code,
+  (SELECT cs.unit_label FROM course_skill cs
+    WHERE cs.skill_id = w.primary_skill_id AND cs.course_id = w.course_id) AS unit_label,
+  (SELECT i.item_type FROM item_set_item si JOIN item i ON i.id = si.item_id
+    WHERE si.item_set_id = w.item_set_id ORDER BY si.position LIMIT 1) AS item_type,
   (SELECT count(*) FROM item_set_item si WHERE si.item_set_id = w.item_set_id)::text AS item_count`;
 
 export async function listWorksheets(
@@ -86,35 +93,54 @@ export async function getWorksheet(
 export type PreviewItem = {
   position: number; item_type: string; stem: string;
   choices: Array<{ key: string; text: string }>;
+  instructions: string | null;
 };
 
-export async function previewItems(itemSetId: string, limit = 6): Promise<PreviewItem[]> {
-  const rows = await query<{ position: number; item_type: string; stem: string; body: Record<string, unknown> }>(
-    `SELECT si.position, i.item_type, i.stem, i.body
+export async function previewItems(itemSetId: string, limit = 14): Promise<PreviewItem[]> {
+  const rows = await query<{
+    position: number; item_type: string; stem: string;
+    body: Record<string, unknown>; render_meta: Record<string, unknown>;
+  }>(
+    `SELECT si.position, i.item_type, i.stem, i.body, i.render_meta
        FROM item_set_item si JOIN item i ON i.id = si.item_id
       WHERE si.item_set_id = $1 ORDER BY si.position LIMIT $2`, [itemSetId, limit]);
   // No answers. A preview is a preview even when nobody is logged in.
   return rows.map((r) => ({
     position: r.position, item_type: r.item_type, stem: r.stem,
+    instructions: (r.render_meta?.tense_label as string | undefined) ?? null,
     choices: ((r.body.choices ?? []) as Array<{ key: string; text: string }>)
       .map((c) => ({ key: c.key, text: c.text })),
   }));
 }
 
-/** Same skill first, then the rest of the course. Deterministic, so the page caches. */
-export async function relatedWorksheets(worksheetId: string, limit = 6): Promise<LibraryWorksheet[]> {
+/**
+ * Two from the same skill, two from elsewhere in the course.
+ *
+ * Ordering same-skill first and taking the top N gives four cards that all say
+ * "same skill", which tells a teacher nothing about where they are. The split
+ * is what makes the section answer its own heading.
+ */
+export async function relatedWorksheets(worksheetId: string, limit = 4): Promise<LibraryWorksheet[]> {
+  const half = Math.max(1, Math.floor(limit / 2));
   return query<LibraryWorksheet>(
-    `WITH self AS (SELECT course_id, primary_skill_id FROM worksheet WHERE id = $1)
-     SELECT ${WORKSHEET_COLUMNS}
-       FROM worksheet w
-       JOIN skill sk ON sk.id = w.primary_skill_id
-       JOIN course co ON co.id = w.course_id
-       JOIN subject su ON su.id = co.subject_id
-       CROSS JOIN self
-      WHERE w.published_at IS NOT NULL AND w.id <> $1
-        AND (w.primary_skill_id = self.primary_skill_id OR w.course_id = self.course_id)
-      ORDER BY (w.primary_skill_id = self.primary_skill_id) DESC, w.slug
-      LIMIT $2`, [worksheetId, limit]);
+    `WITH self AS (SELECT course_id, primary_skill_id FROM worksheet WHERE id = $1),
+     candidates AS (
+       SELECT ${WORKSHEET_COLUMNS},
+              (w.primary_skill_id = self.primary_skill_id) AS same_skill,
+              row_number() OVER (
+                PARTITION BY (w.primary_skill_id = self.primary_skill_id)
+                ORDER BY w.slug) AS rn
+         FROM worksheet w
+         JOIN skill sk ON sk.id = w.primary_skill_id
+         JOIN course co ON co.id = w.course_id
+         JOIN subject su ON su.id = co.subject_id
+         CROSS JOIN self
+        WHERE w.published_at IS NOT NULL AND w.id <> $1
+          AND w.course_id = self.course_id
+     )
+     SELECT * FROM candidates WHERE rn <= $2
+     ORDER BY same_skill DESC, rn
+     LIMIT $3`, [worksheetId, half, limit]);
 }
 
 export async function allWorksheetPaths(): Promise<Array<{
