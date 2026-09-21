@@ -11,7 +11,8 @@
     "test": "tsx --test src/**/*.test.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "proof": "tsx scripts/proof.ts"
+    "proof": "tsx scripts/proof.ts",
+    "e2e:classroom": "tsx scripts/classroom-e2e.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

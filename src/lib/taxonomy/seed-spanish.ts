@@ -180,3 +180,27 @@ export const LEXEMES: SeedLexeme[] = [
   { lemma: 'contento', pos: 'adj', gloss: 'happy', course: 1 },
   { lemma: 'inteligente', pos: 'adj', gloss: 'intelligent', course: 1 },
 ];
+
+/**
+ * Phrases a teacher might actually write for each skill. Used only by the
+ * context-note extractor, which matches a note against this closed list — a
+ * note can name a skill a hundred ways, but the chip it produces is always one
+ * of these slugs.
+ */
+export const SKILL_SYNONYMS: Record<string, string[]> = {
+  'ser-vs-estar': ['ser vs estar', 'ser and estar', 'ser/estar', 'ser or estar', 'two verbs for to be'],
+  'present-regular-ar': ['ar verbs', '-ar verbs', 'regular ar'],
+  'present-regular-er': ['er verbs', '-er verbs', 'regular er'],
+  'present-regular-ir': ['ir verbs', '-ir verbs', 'regular ir'],
+  'present-stem-changing': ['stem changers', 'stem-changing', 'stem changing', 'boot verbs', 'shoe verbs'],
+  'preterite-regular': ['preterite', 'preterit', 'pret', 'simple past'],
+  'preterite-irregular': ['irregular preterite', 'irregular preterit', 'irregular past'],
+  'imperfect-regular': ['imperfect', 'imperfecto'],
+  'preterite-vs-imperfect': ['preterite vs imperfect', 'preterite and imperfect', 'past tenses',
+    'pret vs imp', 'preterite or imperfect'],
+  'future-simple': ['future tense', 'future'],
+  'present-subjunctive': ['subjunctive', 'subjuntivo'],
+  'gender-and-number': ['gender', 'masculine and feminine', 'plurals'],
+  'definite-indefinite-articles': ['articles', 'el la los las', 'definite articles'],
+  'adjective-agreement': ['adjective agreement', 'adjectives agreeing', 'agreement'],
+};
