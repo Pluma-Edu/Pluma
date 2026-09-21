@@ -1,0 +1,178 @@
+/*
+ * Worksheet print stylesheet. Hand-written, not Tailwind.
+ *
+ * The target is a page that survives being photocopied twice and read from the
+ * back row, so: black text only, no fill lighter than 15% grey, rules no
+ * thinner than 0.5pt, point units throughout, and no web font fetch — a
+ * headless Chromium that renders before a font loads silently changes every
+ * line break on the page.
+ */
+
+@page {
+  size: letter;
+  margin: 0.6in 0.65in 0.8in 0.65in;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #000;
+  font-family: "DejaVu Serif", "Liberation Serif", Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.45;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet { width: 100%; }
+
+/* ---------------------------------------------------------------- header */
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1pt solid #000;
+  padding-bottom: 6pt;
+  margin-bottom: 10pt;
+}
+
+.masthead h1 {
+  font-size: 15pt;
+  font-weight: 700;
+  margin: 0 0 2pt 0;
+  letter-spacing: 0.01em;
+}
+
+.masthead .course {
+  font-size: 10pt;
+  margin: 0;
+}
+
+.masthead .brand {
+  font-size: 9pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding-left: 18pt;
+}
+
+.nameline {
+  display: flex;
+  gap: 22pt;
+  font-size: 10.5pt;
+  margin-bottom: 12pt;
+}
+
+.nameline span { white-space: nowrap; }
+
+.nameline .rule {
+  display: inline-block;
+  border-bottom: 0.75pt solid #000;
+  min-width: 150pt;
+  margin-left: 4pt;
+}
+
+.nameline .rule.short { min-width: 80pt; }
+
+.instructions {
+  font-size: 11pt;
+  font-style: italic;
+  border-left: 2pt solid #000;
+  padding: 2pt 0 2pt 8pt;
+  margin-bottom: 14pt;
+}
+
+/* ----------------------------------------------------------------- items */
+
+ol.items {
+  list-style: none;
+  counter-reset: item;
+  margin: 0;
+  padding: 0;
+}
+
+ol.items > li {
+  counter-increment: item;
+  position: relative;
+  padding-left: 26pt;
+  margin-bottom: 15pt;
+  /* never split a question across a page break */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+ol.items > li::before {
+  content: counter(item) ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20pt;
+  text-align: right;
+  font-weight: 700;
+}
+
+.stem { margin: 0; }
+
+.blank {
+  display: inline-block;
+  min-width: 78pt;
+  border-bottom: 0.75pt solid #000;
+  margin: 0 2pt;
+}
+
+.answer-line {
+  display: block;
+  border-bottom: 0.75pt solid #000;
+  height: 17pt;
+  margin-top: 5pt;
+}
+
+ul.choices {
+  list-style: none;
+  margin: 5pt 0 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2pt 14pt;
+}
+
+ul.choices li { font-size: 11.5pt; }
+
+ul.choices .key {
+  display: inline-block;
+  width: 15pt;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------ answer key */
+
+.keysheet ol.items > li { margin-bottom: 9pt; }
+
+.keysheet .answer {
+  font-weight: 700;
+  /* 15% is the lightest fill that survives a second-generation photocopy */
+  background: #d9d9d9;
+  padding: 0 3pt;
+}
+
+.keysheet .why {
+  display: block;
+  font-size: 10pt;
+  font-style: italic;
+  margin-top: 2pt;
+}
+
+.keybanner {
+  border: 1pt solid #000;
+  padding: 3pt 7pt;
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 12pt;
+  display: inline-block;
+}
