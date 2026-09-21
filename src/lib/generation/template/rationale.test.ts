@@ -103,3 +103,21 @@ test('any short prefix of a pool is varied in person', () => {
   const verbs = new Set(first10.map((i) => (i.grammar_claim as { lemma: string }).lemma));
   assert.equal(verbs.size, 10, 'a worksheet should not repeat a verb');
 });
+
+test('difficulty narrows a skill but never empties it', () => {
+  // preterite-irregular is a skill ABOUT irregular verbs; a low difficulty
+  // asking for regular verbs must not intersect it to nothing.
+  for (const skill of ['preterite-irregular', 'present-stem-changing', 'present-regular-ir']) {
+    for (const difficulty of [1, 2, 3, 4, 5] as const) {
+      const params: GenerationParams = {
+        subject: 'spanish', course: 'spanish-3', skill, item_type: 'cloze', difficulty,
+        content_locale: 'es', ui_locale: 'en',
+        constraints: { lexicon_version: 1, lexicon_ceiling: 3, register: 'neutral', stem_max_chars: 160 },
+        template: { name: 'conjugation-drill', version: 1 }, model_id: null,
+      };
+      const items = generateTemplateItems(params, lexicon, 20);
+      assert.ok(items.length >= 12,
+        `${skill} at difficulty ${difficulty} produced only ${items.length} items`);
+    }
+  }
+});

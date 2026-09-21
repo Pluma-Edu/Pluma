@@ -5,6 +5,12 @@ import { query, one } from '@/lib/db/client';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { setSessionCookie, clearSessionCookie } from '@/lib/auth/session';
 
+/** Only same-site paths. A `next` from a query string is attacker-controlled. */
+function safeNext(form: FormData): string {
+  const next = String(form.get('next') ?? '');
+  return next.startsWith('/') && !next.startsWith('//') ? next : '/teacher';
+}
+
 export async function signUp(_prev: string | null, form: FormData): Promise<string | null> {
   const email = String(form.get('email') ?? '').trim().toLowerCase();
   const password = String(form.get('password') ?? '');
@@ -22,7 +28,7 @@ export async function signUp(_prev: string | null, form: FormData): Promise<stri
     [email, await hashPassword(password), name || email.split('@')[0]]);
 
   await setSessionCookie(account.id);
-  redirect('/teacher');
+  redirect(safeNext(form));
 }
 
 export async function signIn(_prev: string | null, form: FormData): Promise<string | null> {
@@ -40,7 +46,7 @@ export async function signIn(_prev: string | null, form: FormData): Promise<stri
 
   await query(`UPDATE account SET last_seen_at = now() WHERE id = $1`, [rows[0].id]);
   await setSessionCookie(rows[0].id);
-  redirect('/teacher');
+  redirect(safeNext(form));
 }
 
 export async function signOut(): Promise<void> {

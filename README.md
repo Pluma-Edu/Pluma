@@ -15,15 +15,22 @@ Design docs — read these before the code:
 | [`docs/design/01-data-model.sql`](docs/design/01-data-model.sql) | the schema, mirrored into `migrations/0001_init.sql` |
 | [`docs/design/02-generation-pipeline.md`](docs/design/02-generation-pipeline.md) | inputs, output schema, validation layers, failure handling |
 
-## Status: Phase 1
+## Status: Phase 2
 
-Surface 2, the classroom, end to end for Spanish 1-3. A teacher signs up, makes
-a class, adds students with notes, assigns differentiated work; students join
-with a class code and no account; work is auto-graded and the per-skill mastery
-grid fills in. Phase 0's bank, validator and print renderer sit underneath it.
+Surfaces 1 and 2 are live for Spanish 1-3.
 
-Not built yet: the public library (surface 1), practice (surface 3), and
-everything in the brief's out-of-scope list.
+**Surface 2, the classroom.** A teacher signs up, makes a class, adds students
+with notes, assigns differentiated work; students join with a class code and no
+account; work is auto-graded and the per-skill mastery grid fills in.
+
+**Surface 1, the library.** 45 statically generated, SEO-indexed worksheet
+pages at `/worksheets/{subject}/{course}/{skill}/{slug}`, each with a preview,
+a free ungated PDF, related sheets, and an answer key behind a free teacher
+account. Its content is a byproduct of the same generator surface 2 uses —
+there is no second content pipeline.
+
+Not built yet: practice (surface 3), and everything in the brief's
+out-of-scope list.
 
 ## Setup
 
@@ -41,9 +48,16 @@ npm run dev                   # then open /proof
 ## Proving it works
 
 ```sh
-npm run proof           # Phase 0: worksheet + answer key, keys re-derived
-npm run e2e:classroom   # Phase 1: the whole classroom loop, with assertions
+npm run proof            # Phase 0: worksheet + answer key, keys re-derived
+npm run e2e:classroom    # Phase 1: the whole classroom loop, with assertions
+npm run library:build    # Phase 2: batch-build the library, idempotent
+npm run library:gaps     # which skill/variant pairs cannot be filled, and why
 ```
+
+With the app running, `scripts/library-gate-check.ts <email> <password>` checks
+constraint 6 in both directions: the worksheet is free, the answer key is not
+reachable anonymously by any URL and is not in public storage at all, a
+signed-in teacher gets it, and the unlock is recorded exactly once.
 
 `e2e:classroom` signs a teacher up, builds a class, adds five students with real
 notes, confirms chips, assigns work, answers it as each student, and reads the
@@ -77,6 +91,8 @@ src/lib/validation/    L0 structural + L1 linguistic
 src/lib/roster/        the context-note extractor (closed output vocabulary)
 src/lib/grading/       accent-aware auto-grading with near-miss diagnosis
 src/lib/classroom/     classes, roster, assignments, student flow, mastery
+src/lib/library/       public worksheet variants and queries
+src/lib/storage/       public (free PDFs) and private (answer keys) stores
 src/lib/auth/          teacher sessions; students never get one
 src/lib/render/        print CSS, worksheet HTML, Chromium PDF
 scripts/               migrate, seed, proof, screenshot
@@ -95,6 +111,12 @@ teacher confirms. A scrubber is a recall problem; a closed output vocabulary is
 not, because a student's name cannot be a member of it. Clinical, immigration
 and family terms are never turned into chips at all, and the teacher is told
 they were ignored.
+
+**Nothing renders on demand for anonymous traffic.** Library PDFs are
+rendered once at batch time, content-addressed, and served by the static
+handler. An SEO-indexed PDF endpoint that renders per request is an unmetered
+bill with a crawler attached. Answer keys live outside `public/` entirely, so
+the gate is not something you could walk around by guessing a URL.
 
 **Constraint 2 is a type signature, not a rule.** `src/lib/generation/model/client.ts`
 accepts `GenerationParams` and a lemma allow-list. `GenerationParams` contains

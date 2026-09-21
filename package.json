@@ -12,7 +12,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "proof": "tsx scripts/proof.ts",
-    "e2e:classroom": "tsx scripts/classroom-e2e.ts"
+    "e2e:classroom": "tsx scripts/classroom-e2e.ts",
+    "library:build": "tsx scripts/build-library.ts",
+    "library:gaps": "tsx scripts/library-gaps.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

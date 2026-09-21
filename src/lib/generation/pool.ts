@@ -58,7 +58,9 @@ export async function ensurePool(params: GenerationParams, targetSize = DEFAULT_
 
 export async function servableCount(hash: string): Promise<number> {
   const [row] = await query<{ n: string }>(
-    `SELECT count(*)::text AS n FROM item WHERE generation_hash = $1 AND is_servable`, [hash]);
+    `SELECT count(*)::text AS n
+       FROM item_pool mp JOIN item i ON i.id = mp.item_id
+      WHERE mp.generation_hash = $1 AND i.is_servable`, [hash]);
   return Number(row.n);
 }
 
@@ -68,6 +70,8 @@ export type TopUpReport = {
   persisted: number;
   rejected: number;
   duplicates: number;
+  /** Items that already existed in the bank and were linked into this pool. */
+  linked: number;
   servable: number;
   source: 'template' | 'model' | 'none';
 };
@@ -80,7 +84,8 @@ export async function topUpPool(
   const hash = await ensurePool(params, targetSize);
   const have = await servableCount(hash);
   const report: TopUpReport = {
-    hash, generated: 0, persisted: 0, rejected: 0, duplicates: 0, servable: have, source: 'none',
+    hash, generated: 0, persisted: 0, rejected: 0, duplicates: 0, linked: 0,
+    servable: have, source: 'none',
   };
   if (have >= targetSize) return report;
 
@@ -123,11 +128,11 @@ export async function topUpPool(
   };
 
   for (const item of candidates) {
-    if (report.servable + report.persisted >= targetSize) break;
+    if (report.servable + report.persisted + report.linked >= targetSize) break;
     const outcome: ValidationOutcome = validateItem(item, ctx);
     const fingerprint = contentFingerprint(item);
 
-    const inserted = await tx(async (c) => {
+    const outcome_row = await tx(async (c) => {
       const res = await c.query(
         `INSERT INTO item (skill_id, course_id, item_type, difficulty, locale, stem, body,
             answer, accepted_answers, answer_match_mode, rationale, render_meta, grammar_claim,
@@ -145,8 +150,26 @@ export async function topUpPool(
           item.lexemes_used, item.auto_gradable, hash, item.generator_kind, fingerprint,
           outcome.state]);
 
-      if (res.rows.length === 0) return null;
+      if (res.rows.length === 0) {
+        // The bank already holds this exact question. That is not waste — it
+        // belongs in this pool too, so link it rather than discarding it and
+        // drawing short later.
+        const { rows: found } = await c.query(
+          `SELECT id, is_servable FROM item WHERE content_fingerprint = $1
+            AND validation_state <> 'rejected'`, [fingerprint]);
+        if (found.length === 0) return { kind: 'duplicate' as const };
+        const { rowCount } = await c.query(
+          `INSERT INTO item_pool (generation_hash, item_id) VALUES ($1,$2)
+           ON CONFLICT DO NOTHING`, [hash, found[0].id]);
+        return rowCount === 1 && found[0].is_servable
+          ? { kind: 'linked' as const }
+          : { kind: 'duplicate' as const };
+      }
+
       const itemId = res.rows[0].id as string;
+      await c.query(
+        `INSERT INTO item_pool (generation_hash, item_id) VALUES ($1,$2)
+         ON CONFLICT DO NOTHING`, [hash, itemId]);
       for (const check of outcome.checks) {
         await c.query(
           `INSERT INTO validation_result (item_id, layer, check_name, passed, detail)
@@ -154,10 +177,11 @@ export async function topUpPool(
           [itemId, check.layer, check.name, check.passed,
             check.detail ? JSON.stringify(check.detail) : null]);
       }
-      return itemId;
+      return { kind: 'inserted' as const };
     });
 
-    if (inserted === null) report.duplicates++;
+    if (outcome_row.kind === 'duplicate') report.duplicates++;
+    else if (outcome_row.kind === 'linked') report.linked++;
     else if (outcome.state === 'auto_validated') report.persisted++;
     else report.rejected++;
   }
@@ -207,10 +231,12 @@ export async function drawFromPool(hash: string, count: number): Promise<ItemRow
          SELECT i.id, i.item_type, i.difficulty, i.stem, i.body, i.answer,
                 i.accepted_answers, i.rationale, i.render_meta, sk.name AS skill_name,
                 row_number() OVER (PARTITION BY i.grammar_claim->>'person'
-                                   ORDER BY i.created_at, i.id) AS cycle,
+                                   ORDER BY mp.added_at, i.id) AS cycle,
                 dense_rank() OVER (ORDER BY i.grammar_claim->>'person')  AS person_rank
-           FROM item i JOIN skill sk ON sk.id = i.skill_id
-          WHERE i.generation_hash = $1 AND i.is_servable
+           FROM item_pool mp
+           JOIN item i ON i.id = mp.item_id
+           JOIN skill sk ON sk.id = i.skill_id
+          WHERE mp.generation_hash = $1 AND i.is_servable
        ) spread
       ORDER BY cycle, person_rank
       LIMIT $2`, [hash, count]);

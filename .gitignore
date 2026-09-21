@@ -6,3 +6,7 @@ out/
 *.tsbuildinfo
 /tmp-render/
 out/
+
+# generated library artefacts
+public/library/
+.library-private/

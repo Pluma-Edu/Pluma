@@ -204,3 +204,33 @@ export const SKILL_SYNONYMS: Record<string, string[]> = {
   'definite-indefinite-articles': ['articles', 'el la los las', 'definite articles'],
   'adjective-agreement': ['adjective agreement', 'adjectives agreeing', 'agreement'],
 };
+
+/**
+ * How each skill is named on a public page.
+ *
+ * `name` is written for a gradebook column — "Preterite: irregular verbs" —
+ * which is right in the teacher grid and wrong in a page title. Surface 1 is
+ * the entire acquisition channel and teachers arrive by typing "spanish 2
+ * irregular preterite worksheet" into a search box, so the public name is
+ * written for that and kept as data rather than derived by string surgery.
+ */
+export const SKILL_SEO_NAME: Record<string, string> = {
+  'present-regular-ar': 'Regular -AR Verbs in the Present Tense',
+  'present-regular-er': 'Regular -ER Verbs in the Present Tense',
+  'present-regular-ir': 'Regular -IR Verbs in the Present Tense',
+  'present-stem-changing': 'Stem-Changing Verbs in the Present Tense',
+  'ser-vs-estar': 'Ser vs. Estar',
+  'preterite-regular': 'Regular Preterite Verbs',
+  'preterite-irregular': 'Irregular Preterite Verbs',
+  'imperfect-regular': 'The Imperfect Tense',
+  'preterite-vs-imperfect': 'Preterite vs. Imperfect',
+  'future-simple': 'The Simple Future Tense',
+  'present-subjunctive': 'The Present Subjunctive',
+  'gender-and-number': 'Noun Gender and Number',
+  'definite-indefinite-articles': 'Definite and Indefinite Articles',
+  'adjective-agreement': 'Adjective Agreement',
+};
+
+export function publicSkillName(slug: string, fallback: string): string {
+  return SKILL_SEO_NAME[slug] ?? fallback;
+}
